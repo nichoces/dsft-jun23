@@ -1,5 +1,6 @@
 import flask
 from flask import request, jsonify
+import sqlite3
 
 books = [{'id': 0,
  'title': 'A Fire Upon the Deep',
@@ -57,5 +58,73 @@ def get_by_id():
         if book['id'] == id:
             return jsonify(book)
     return jsonify({'message': "Book not found"})
+
+@app.route('/api/v1/resources/book', methods=['POST'])
+def post_book():
+    data = request.get_json()
+    books.append(data)
+    return data
+
+@app.route('/api/v1/resources/books/all2', methods=['GET'])
+def get_all():
+    connection = sqlite3.connect('./1-Routing/books.db')
+    cursor = connection.cursor()
+    select_books = "SELECT * FROM books"
+    result = cursor.execute(select_books).fetchall()
+    connection.close()
+    return {'books': result}
+
+@app.route('/api/v4/resources/book/<string:author>', methods=['GET'])
+def get_by_author(author):
+    connection = sqlite3.connect('./1-Routing/books.db')
+    cursor = connection.cursor()
+
+    select_books = "SELECT * FROM books WHERE author=?"
+
+    result = cursor.execute(select_books, (author,)).fetchall()
+
+    connection.close()
+
+    return {'books': result}
+
+
+@app.route('/api/v4/resources/book/filter', methods=['GET'])
+def filter_table():
+    query_parameters = request.get_json()
+
+    id = query_parameters.get('id')
+    published = query_parameters.get('published')
+    author = query_parameters.get('author')
+
+    connection = sqlite3.connect('./1-Routing/books.db')
+    cursor = connection.cursor()
+
+    query = "SELECT * FROM books WHERE"
+    to_filter = []
+
+    if id:
+        query += ' id=? AND'
+        to_filter.append(id)
+    if published:
+        query += ' published=? AND'
+        to_filter.append(published)
+    if author:
+        query += ' author=? AND'
+        to_filter.append(author)
+    if not (id or published or author):
+        return "page not found 404"
+
+
+    query = query[:-4] + ';'
+
+    result = cursor.execute(query, to_filter).fetchall()
+
+    connection.close()
+
+
+    return {'books': result}
+
+
+
 
 app.run()
